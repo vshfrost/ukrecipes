@@ -1,0 +1,46 @@
+version: '3.5'
+
+services:
+  php-fpm:
+    build: ./infrastructure/php-fpm
+    container_name: 'recipe-php-fpm'
+    volumes:
+      - ./:/var/www/html
+    links:
+      - postgres
+
+  nginx: 
+    image: nginx:latest
+    container_name: 'recipe-nginx'
+    ports:
+      - '${NGINX_PORT}:${NGINX_INTERNAL_PORT}'
+    environment:
+      - PORT=${NGINX_INTERNAL_PORT}
+      - SERVER_NAME=${NGINX_SERVER_NAME}
+    volumes:
+      - ./public:/var/www/html/public
+      - ./storage/logs/nginx:/var/log/nginx
+      - ./infrastructure/nginx/templates:/etc/nginx/templates
+    links: 
+      - php-fpm
+
+  postgres:
+    image: postgres:alpine
+    container_name: 'recipe-postgres'
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    ports:
+      - '${DB_PORT}:${DB_INTERNAL_PORT}'
+    volumes:
+      - ./storage/logs/postgres:/var/lib/postgresql/data
+
+  supervisor:
+    build: ./infrastructure/supervisor
+    container_name: 'recipe-supervisor'
+    volumes:
+      - ./:/var/www/html
+      - ./infrastructure/supervisor/config:/etc/supervisor
+      - ./storage/logs/supervisor:/var/log/supervisor
+    links: 
+      - php-fpm
